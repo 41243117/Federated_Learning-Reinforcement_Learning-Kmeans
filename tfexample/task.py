@@ -42,7 +42,14 @@ def load_data(partition_id, num_partitions):
     # Only initialize `FederatedDataset` once
     global fds
     if fds is None:
-        partitioner = IidPartitioner(num_partitions=num_partitions)
+        #partitioner = IidPartitioner(num_partitions=num_partitions)
+        partitioner = DirichletPartitioner(
+            num_partitions=num_partitions,
+            partition_by="label",
+            alpha=0.1,              # 越小越不平均
+            min_partition_size=10,  # 避免某些 client 幾乎沒資料
+            self_balancing=False,   # 可保留更強烈的不均勻
+        )
         fds = FederatedDataset(
             dataset="uoft-cs/cifar10",
             partitioners={"train": partitioner},
