@@ -36,6 +36,14 @@ def loss_on_data(model, x, y):
         return float(out[0])
     return float(out)
 
+# 取出各 client 的資料與計算比率
+def label_distribution(y, num_classes: int = 10):
+    y = np.asarray(y).astype(np.int64)
+    counts = np.bincount(y, minlength=num_classes).astype(int)
+    total = int(counts.sum())
+    ratios = (counts / total).astype(np.float64) if total > 0 else np.zeros(num_classes, dtype=np.float64)
+    return counts, ratios
+
 @app.train()
 def train(msg: Message, context: Context):
     keras.backend.clear_session()
@@ -45,6 +53,11 @@ def train(msg: Message, context: Context):
     num_partitions = context.node_config["num-partitions"]
     x_train, y_train, _, _ = load_data(partition_id, num_partitions)
 
+    # 顯示每個 client 中各標籤的資料量與比率
+    counts, ratios = label_distribution(y_train, num_classes=10)
+    print(f"[Client {partition_id}] label_counts={counts.tolist()}")
+    print(f"[Client {partition_id}] label_ratios={[float(r) for r in ratios.tolist()]}")
+    
     # 建立模型
     lr = context.run_config["learning-rate"]
     model = load_model(lr)
