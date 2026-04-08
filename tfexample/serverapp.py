@@ -86,7 +86,7 @@ class ClusterStrategy(FedAvg):
             f"Cluster={label+1}, "
             f"cos_sim={feat[0]:.4f}, "
             f"l2_norm={feat[1]:.4f}, "
-            f"reward={feat[2]:.4f}, "
+            f"loss={feat[2]:.4f}, "
             f"num_examples={n}"
             )
 
