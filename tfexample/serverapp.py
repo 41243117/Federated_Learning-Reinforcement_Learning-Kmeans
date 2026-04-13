@@ -93,14 +93,14 @@ class ClusterStrategy(FedAvg):
          # ==========================================
         # ======== 新增的 3D 分群結果視覺化區塊 ========
         # ==========================================
-        try:
-            fig = plt.figure(figsize=(10, 8))
-            ax = fig.add_subplot(111, projection='3d')
+        try: #嘗試執行
+            fig = plt.figure(figsize=(10, 8)) #開一張新的figure大小為 10 * 8
+            ax = fig.add_subplot(111, projection='3d') #fig.add_subploty在剛才建立的figure加入座標軸 111意思是將整張圖占滿整個figure projection='3d'設定為3D空間
             
             # 將三種特徵作為 X, Y, Z 軸，並利用 KMeans 的 labels 作為顏色區分
             scatter = ax.scatter(X[:, 0], X[:, 1], X[:, 2], 
-                                 c=labels, cmap='tab20b', s=100, depthshade=True)
-            
+                                 c=labels, cmap='tab20b', s=100, depthshade=True) #
+            #設定X、Y、Z軸及圖片名稱
             ax.set_xlabel('Cosine Similarity')
             ax.set_ylabel('L2 Norm')
             ax.set_zlabel('Reward (Loss Diff)')
@@ -110,8 +110,8 @@ class ClusterStrategy(FedAvg):
             for i in range(len(X)):
                 ax.text(X[i, 0], X[i, 1], X[i, 2], f' C{i+1}', size=10, zorder=1, color='black')
                 
-            plt.savefig(f'clustering_result_round_{server_round}.png')
-            plt.close()
+            plt.savefig(f'clustering_result_round_{server_round}.png') #將圖檔存成png
+            plt.close()  #關閉figure
             print(f" [+] 已將 Round {server_round} 的 3D 分群視覺化圖片儲存至當前目錄。")
         except Exception as e:
             print(f" [-] 儲存分群視覺化圖片失敗: {e}")
