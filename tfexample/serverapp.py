@@ -90,6 +90,32 @@ class ClusterStrategy(FedAvg):
             f"num_examples={n}"
             )
 
+         # ==========================================
+        # ======== 新增的 3D 分群結果視覺化區塊 ========
+        # ==========================================
+        try:
+            fig = plt.figure(figsize=(10, 8))
+            ax = fig.add_subplot(111, projection='3d')
+            
+            # 將三種特徵作為 X, Y, Z 軸，並利用 KMeans 的 labels 作為顏色區分
+            scatter = ax.scatter(X[:, 0], X[:, 1], X[:, 2], 
+                                 c=labels, cmap='tab20b', s=100, depthshade=True)
+            
+            ax.set_xlabel('Cosine Similarity')
+            ax.set_ylabel('L2 Norm')
+            ax.set_zlabel('Reward (Loss Diff)')
+            ax.set_title(f'Round {server_round} Client Clustering Space')
+            
+            # 在每個點旁邊標上對應的 Client 編號
+            for i in range(len(X)):
+                ax.text(X[i, 0], X[i, 1], X[i, 2], f' C{i+1}', size=10, zorder=1, color='black')
+                
+            plt.savefig(f'clustering_result_round_{server_round}.png')
+            plt.close()
+            print(f" [+] 已將 Round {server_round} 的 3D 分群視覺化圖片儲存至當前目錄。")
+        except Exception as e:
+            print(f" [-] 儲存分群視覺化圖片失敗: {e}")
+        # ==========================================
 
         cluster_models = []
 
