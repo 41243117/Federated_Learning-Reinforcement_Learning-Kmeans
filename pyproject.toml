@@ -28,5 +28,12 @@ num-server-rounds = 3
 local-epochs = 1
 batch-size = 32
 learning-rate = 0.005
-fraction-train = 0.5
+fraction-train = 1
 verbose = false
+num-partitions = 10
+
+[tool.flwr.federations.local-simulation]
+options.num-supernodes = 10
+
+[tool.flwr.federations]
+default = "local-simulation"
