@@ -2,6 +2,7 @@ from typing import Any
 
 import numpy as np
 from sklearn.cluster import KMeans
+from sklearn.preprocessing import StandardScaler
 
 from flwr.app import ArrayRecord, Context
 from flwr.serverapp import Grid, ServerApp
