@@ -111,16 +111,16 @@ class ClusterStrategy(FedAvg):
         avg_cos = np.mean(X[:, 0])
         avg_l2 = np.mean(X[:, 1])
         avg_loss = np.mean(X[:, 2])
-        current_state = np.array([avg_cos, avg_l2, avg_reward])
+        current_state = np.array([avg_cos, avg_l2, avg_loss])
 
         # 如果這不是第一輪，代表現在的 avg_reward 是「上一輪 Action」的結果
         if server_round > 1 and self.last_state is not None:
             # 把 (上輪狀態, 上輪動作, 這輪的Reward, 這輪狀態) 存入記憶體並學習
-            self.dqn_agent.store_transition(self.last_state, self.last_action, avg_reward, current_state)
+            self.dqn_agent.store_transition(self.last_state, self.last_action, avg_loss, current_state)
             self.dqn_agent.learn()
             
             # 記錄起來供結算畫圖
-            self.history_rewards.append(avg_reward)
+            self.history_rewards.append(avg_loss)
 
         # 讓 DQN 根據目前狀態決定這一輪的 Action
         action = self.dqn_agent.choose_action(current_state)
