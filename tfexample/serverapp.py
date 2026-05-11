@@ -73,7 +73,7 @@ class ClusterStrategy(FedAvg):
                 [
                     float(metrics.get("cos_sim", 0.0)),
                     float(metrics.get("l2_norm", 0.0)),
-                    float(metrics.get("loss", 0.0)),
+                    float(metrics.get("delta_loss", 0.0)),
                 ]
             )
             num_examples.append(int(metrics.get("num-examples", 1)))
@@ -110,17 +110,22 @@ class ClusterStrategy(FedAvg):
         # 計算這一輪的平均特徵，作為當前狀態
         avg_cos = np.mean(X[:, 0])
         avg_l2 = np.mean(X[:, 1])
-        avg_loss = np.mean(X[:, 2])
-        current_state = np.array([avg_cos, avg_l2, avg_loss])
+        avg_delta_loss = np.mean(X[:, 2])
 
+        current_state = np.array([avg_cos, avg_l2, avg_delta_loss])
+        rl_reward = -avg_delta_loss
+        
         # 如果這不是第一輪，代表現在的 avg_reward 是「上一輪 Action」的結果
         if server_round > 1 and self.last_state is not None:
             # 把 (上輪狀態, 上輪動作, 這輪的Reward, 這輪狀態) 存入記憶體並學習
-            self.dqn_agent.store_transition(self.last_state, self.last_action, avg_loss, current_state)
+            self.dqn_agent.store_transition(
+                self.last_state,
+                self.last_action,
+                rl_reward,
+                current_state
+            )
             self.dqn_agent.learn()
-            
-            # 記錄起來供結算畫圖
-            self.history_rewards.append(avg_loss)
+            self.history_rewards.append(rl_reward)
 
         # 讓 DQN 根據目前狀態決定這一輪的 Action
         action = self.dqn_agent.choose_action(current_state)
@@ -172,11 +177,13 @@ class ClusterStrategy(FedAvg):
                 # Action 0: 樣本數加權
                 weight = sum([num_examples[i] for i in idx])
             elif action == 1:
-                # Action 1: Reward (Loss下降量) 加權
-                weight = max(np.mean([X[i, 2] for i in idx]), 0) + 1e-5 
+                 # Action 1: loss 下降越多，權重越大
+                cluster_delta_loss = np.mean([X[i, 2] for i in idx])
+                weight = max(-cluster_delta_loss, 0) + 1e-5 
             elif action == 2:
                 # Action 2: Cosine Similarity 加權
-                weight = max(np.mean([X[i, 0] for i in idx]), 0) + 1e-5
+                cluster_cos = np.mean([X[i, 0] for i in idx])
+                weight = (cluster_cos + 1.0) / 2.0 + 1e-5
 
             cluster_weights_ratios.append(weight)
 
