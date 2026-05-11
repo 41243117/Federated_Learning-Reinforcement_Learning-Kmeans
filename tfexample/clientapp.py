@@ -89,7 +89,7 @@ def train(msg: Message, context: Context):
     # 計算三特徵
     cos_sim = cosine_similarity_of_delta(global_weights, local_weights)
     l2 = l2_norm_of_delta(global_weights, local_weights)
-    loss = float(loss_local - loss_global)
+    delta_loss = float(loss_local - loss_global)
 
     # 從 history 取出訓練指標
     train_loss = history.history["loss"][-1] if "loss" in history.history else None
@@ -108,7 +108,7 @@ def train(msg: Message, context: Context):
     # 給 KMeans 的三個值與 loss 資訊
     metrics["cos_sim"] = cos_sim
     metrics["l2_norm"] = l2
-    metrics["loss"] = loss
+    metrics["delta_loss"] = delta_loss
     metrics["loss_global"] = loss_global
     metrics["loss_local"] = loss_local
 
