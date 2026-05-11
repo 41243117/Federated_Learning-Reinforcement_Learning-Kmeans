@@ -20,8 +20,8 @@ packages = ["."]
 publisher = "flwrlabs"
 
 [tool.flwr.app.components]
-serverapp = "tfexample.server_app:app"
-clientapp = "tfexample.client_app:app"
+serverapp = "tfexample.serverapp:app"
+clientapp = "tfexample.clientapp:app"
 
 [tool.flwr.app.config]
 num-server-rounds = 3
