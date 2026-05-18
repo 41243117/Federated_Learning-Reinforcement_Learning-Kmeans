@@ -95,16 +95,17 @@ class ClusterStrategy(FedAvg):
             labels = kmeans.fit_predict(X_scaled)
 
 
-        print(f"\n Round {server_round} Clustering Result")
-        for i, (feat, label, n) in enumerate(zip(feature_list, labels, num_examples)):
-          print(
-            f"Client {i+1}: "
-            f"Cluster={label+1}, "
-            f"cos_sim={feat[0]:.4f}, "
-            f"l2_norm={feat[1]:.4f}, "
-            f"loss={feat[2]:.4f}, "
-            f"num_examples={n}"
-            )
+        if server_round == 1 or server_round % 5 == 0:
+            print(f"\n Round {server_round} Clustering Result")
+            for i, (feat, label, n) in enumerate(zip(feature_list, labels, num_examples)):
+              print(
+                f"Client {i+1}: "
+                f"Cluster={label+1}, "
+                f"cos_sim={feat[0]:.4f}, "
+                f"l2_norm={feat[1]:.4f}, "
+                f"loss={feat[2]:.4f}, "
+                f"num_examples={n}"
+                )
             
     # --強化學習階段--
         # 計算這一輪的平均特徵，作為當前狀態
