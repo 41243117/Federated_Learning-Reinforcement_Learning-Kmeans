@@ -142,11 +142,27 @@ def evaluate(msg: Message, context: Context):
         eval_loss = float(results)
         eval_acc = 0.0
 
+    # 額外計算「正確筆數」
+    y_pred_prob = model.predict(x_test, verbose=0)
+    y_pred = np.argmax(y_pred_prob, axis=1)
+
+    correct_count = int(np.sum(y_pred == y_test))
+    total_count = int(len(y_test))
+
+    print(
+        f"[Client {partition_id}] "
+        f"total_test={total_count}, "
+        f"correct={correct_count}, "
+        f"accuracy={correct_count / total_count:.4f}"
+    )
+
     # 封裝評估指標回傳
     metrics = {
         "eval_loss": eval_loss,
         "eval_acc": eval_acc,
         "num-examples": len(x_test),
+        "correct_count": correct_count,
+        "total_count": total_count,
     }
 
     # 回傳評估訊息
