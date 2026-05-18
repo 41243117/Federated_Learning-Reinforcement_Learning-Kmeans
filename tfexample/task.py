@@ -87,8 +87,8 @@ def load_data(partition_id, num_partitions):
     x_test = partition["test"][:]["image"].astype("float32") / 255.0
     x_test = np.expand_dims(x_test, -1)
     y_test = partition["test"][:]["label"]
-    partition["train"].set_format(type="numpy", columns=["img", "label"])
-    partition["test"].set_format(type="numpy", columns=["img", "label"])
+    #partition["train"].set_format(type="numpy", columns=["img", "label"])
+    #partition["test"].set_format(type="numpy", columns=["img", "label"])
 
     #x_train = partition["train"][:]["img"].astype("float32") / 255.0
     #y_train = partition["train"][:]["label"]
