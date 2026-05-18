@@ -201,6 +201,43 @@ class ClusterStrategy(FedAvg):
         # 回傳最後的 global weights
         return ArrayRecord(final_weights), {}
 
+def aggregate_evaluate(self, server_round, replies):
+        print(f"\n Round {server_round} Client Evaluation Result")
+
+        total_correct = 0
+        total_examples = 0
+
+        for i, reply in enumerate(replies):
+            metrics_record = reply.content.get("metrics", None)
+            metrics = _metric_record_to_dict(metrics_record)
+
+            client_id = int(metrics.get("client_id", i))
+            correct_count = int(metrics.get("correct_count", 0))
+            total_count = int(metrics.get("total_count", metrics.get("num-examples", 0)))
+            eval_acc = float(metrics.get("eval_acc", 0.0))
+            eval_loss = float(metrics.get("eval_loss", 0.0))
+
+            total_correct += correct_count
+            total_examples += total_count
+
+            print(
+                f"Client {client_id}: "
+                f"total={total_count}, "
+                f"correct={correct_count}, "
+                f"acc={eval_acc:.4f}, "
+                f"loss={eval_loss:.4f}"
+            )
+
+        if total_examples > 0:
+            global_acc = total_correct / total_examples
+            print(
+                f"Global Evaluation: "
+                f"total={total_examples}, "
+                f"correct={total_correct}, "
+                f"acc={global_acc:.4f}\n"
+            )
+
+        return super().aggregate_evaluate(server_round, replies)
 
 @app.main()
 def main(grid: Grid, context: Context) -> None:
