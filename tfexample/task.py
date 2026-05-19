@@ -94,25 +94,22 @@ def load_data(partition_id, num_partitions):
     #y_train = partition["train"][:]["label"]
     #x_test = partition["test"][:]["img"].astype("float32") / 255.0
     #y_test = partition["test"][:]["label"]
-    # ==========================================
-    # 😈 惡意節點標籤翻轉 (Label Flipping) 邏輯 😈
-    # ==========================================
+    
+    # 惡意節點標籤翻轉 (Label Flipping) 邏輯 
     # 假設我們設定總共 10 個 Client 中，前 2 個 (ID: 0, 1) 是惡意的
     # malicious_clients = [0, 1] 
     
     if partition_id in malicious_clients:
         
-        # 這裡提供三種常見的翻轉策略，你可以把想用的「取消註解」：
-
-        # 🎯 策略 1：對稱翻轉 (Symmetric Flipping) - 最常見
+        # 策略 1：對稱翻轉 (Symmetric Flipping) - 最常見
         # 把標籤 0 變成 9, 1 變成 8... 整個徹底搞亂
         #y_train = 9 - y_train
 
-        # 🎯 策略 2：目標翻轉 (Targeted Flipping) 
+        # 策略 2：目標翻轉 (Targeted Flipping) 
         # 把所有的飛機 (0) 強制標記成鳥 (2)，針對性攻擊
         y_train = np.where(y_train == 1, 7, y_train)
 
-        # 🎯 策略 3：完全隨機打亂 (Random Shuffling)
+        # 策略 3：完全隨機打亂 (Random Shuffling)
         # 標籤變成毫無意義的雜訊
         # np.random.shuffle(y_train)
     # ==========================================
