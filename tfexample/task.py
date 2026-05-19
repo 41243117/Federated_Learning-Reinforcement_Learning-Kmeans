@@ -55,7 +55,7 @@ def load_data(partition_id, num_partitions):
         random.seed(my_seed)
         
         malicious_clients = random.sample(range(num_partitions), 1)
-        print(f"\n🎲 [系統公告] 抽籤完畢！本次實驗的隨機惡意節點為: Client {malicious_clients} 🎲\n")
+        print(f"\n 惡意節點為: Client {malicious_clients} \n")
        
         #from flwr_datasets.partitioner import IidPartitioner
         #partitioner = IidPartitioner(num_partitions=num_partitions)
@@ -101,7 +101,6 @@ def load_data(partition_id, num_partitions):
     # malicious_clients = [0, 1] 
     
     if partition_id in malicious_clients:
-        print(f"\n🚨 [警告] Client {partition_id} 啟動惡意模式，正在污染訓練標籤！ 🚨")
         
         # 這裡提供三種常見的翻轉策略，你可以把想用的「取消註解」：
 
