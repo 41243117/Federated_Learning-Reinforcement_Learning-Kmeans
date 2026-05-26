@@ -11,6 +11,18 @@ from flwr.serverapp.strategy import FedAvg
 from tfexample.task import load_model
 from tfexample.RLdq import DQN
 
+# Robust Z Score 標準化
+def robust_z_score(values):
+    values = np.array(values, dtype=np.float64)
+    median = np.median(values)
+    mad = np.median(np.abs(values - median))
+    epsilon = 1e-8
+    return 0.6745 * (values - median) / (mad + epsilon)
+
+
+def positive_part(values):
+    return np.maximum(values, 0.0)
+
 app = ServerApp()
 
 # 將 metrics 格式轉換成 dict
@@ -53,8 +65,8 @@ class ClusterStrategy(FedAvg):
     
     def aggregate_train(self, server_round, replies):
 
-    # --抓取權重--
-        # 初始化容器
+    # 抓取權重
+        # 初始化
         weights_list = []   # client 回傳的模型權重
         feature_list = []   # client 的特徵
         num_examples = []   # client 的資料量
@@ -82,12 +94,34 @@ class ClusterStrategy(FedAvg):
         if len(weights_list) == 0:  # 若無有效權重，
             return super().aggregate_train(server_round, replies) # 退回原本 FedAvg
 
-    # --建立 KMeans 輸入矩陣(client 特徵組成)--
+        # 建立 KMeans 輸入矩陣(cluster 特徵組成)
         X = np.array(feature_list, dtype=np.float64)
-        n_clusters = min(3, len(X))
-        X_scaled = StandardScaler().fit_transform(X)
 
-    # --執行 KMeans 分群--
+        cos_vals = X[:, 0]
+        l2_vals = X[:, 1]
+        delta_loss_vals = X[:, 2]
+
+        # cos_sim 越低越可疑，所以轉成 1 - cos_sim
+        direction_deviation = 1.0 - cos_vals
+
+        rz_l2 = positive_part(robust_z_score(l2_vals))
+        rz_dir = positive_part(robust_z_score(direction_deviation))
+        rz_loss = positive_part(robust_z_score(delta_loss_vals))
+
+        # 異常分數
+        anomaly_score = (
+            0.4 * rz_l2
+            + 0.4 * rz_dir
+            + 0.2 * rz_loss
+        )
+
+        # KMeans 的輸入用標準化後的三個異常特徵
+        X_scaled = np.column_stack([rz_l2, rz_dir, rz_loss])
+
+        # 分成幾群
+        n_clusters = min(3, len(X_scaled))
+
+        # --執行 KMeans 分群--
         if n_clusters == 1:
             labels = np.zeros(len(X), dtype=int)
         else:
@@ -98,23 +132,42 @@ class ClusterStrategy(FedAvg):
         if server_round == 1 or server_round % 5 == 0:
             print(f"\n Round {server_round} Clustering Result")
             for i, (feat, label, n) in enumerate(zip(feature_list, labels, num_examples)):
-              print(
-                f"Client {i+1}: "
-                f"Cluster={label+1}, "
-                f"cos_sim={feat[0]:.4f}, "
-                f"l2_norm={feat[1]:.4f}, "
-                f"loss={feat[2]:.4f}, "
-                f"num_examples={n}"
+              client_levels = []
+
+            for s in anomaly_score:
+                if s < 1.5:
+                    client_levels.append("normal")
+                elif s < 3.0:
+                    client_levels.append("slightly_abnormal")
+                else:
+                    client_levels.append("highly_abnormal")
+
+            print(f"\n Round {server_round} Clustering Result")
+
+            for i, (feat, label, n) in enumerate(zip(feature_list, labels, num_examples)):
+                print(
+                    f"Client {i+1}: "
+                    f"Cluster={label+1}, "
+                    f"cos_sim={feat[0]:.4f}, "
+                    f"l2_norm={feat[1]:.4f}, "
+                    f"delta_loss={feat[2]:.4f}, "
+                    f"anomaly_score={anomaly_score[i]:.4f}, "
+                    f"level={client_levels[i]}, "
+                    f"num_examples={n}"
                 )
             
-    # --強化學習階段--
+    # 強化學習
         # 計算這一輪的平均特徵，作為當前狀態
-        avg_cos = np.mean(X[:, 0])
-        avg_l2 = np.mean(X[:, 1])
-        avg_delta_loss = np.mean(X[:, 2])
+        avg_rz_l2 = np.mean(rz_l2)
+        avg_rz_dir = np.mean(rz_dir)
+        avg_rz_loss = np.mean(rz_loss)
 
-        current_state = np.array([avg_cos, avg_l2, avg_delta_loss])
-        rl_reward = -avg_delta_loss
+        # State 為平均異常特徵
+        current_state = np.array([avg_rz_l2, avg_rz_dir, avg_rz_loss], dtype=np.float64)
+
+        # 用平均異常分數作為 reward
+        avg_anomaly_score = float(np.mean(anomaly_score))
+        rl_reward = -avg_anomaly_score
         
         # 如果這不是第一輪，代表現在的 avg_reward 是「上一輪 Action」的結果
         if server_round > 1 and self.last_state is not None:
@@ -137,7 +190,7 @@ class ClusterStrategy(FedAvg):
         self.last_state = current_state
         self.last_action = action
 
-    # --逐群作群內平均--
+        # 逐群作群內平均
         cluster_models = []
         for cluster_id in np.unique(labels):
             idx = np.where(labels == cluster_id)[0]
@@ -168,23 +221,30 @@ class ClusterStrategy(FedAvg):
         if len(cluster_models) == 0:  # 若無得到群模型，
             return super().aggregate_train(server_round, replies) # 退回 FedAvg
 
-    # --群之間做聚合--
+        # 群之間做聚合
         cluster_weights_ratios = []
 
         for cluster_id in np.unique(labels):
             idx = np.where(labels == cluster_id)[0]
             
             if action == 0:
-                # Action 0: 樣本數加權
+            # Action 0：樣本數加權，偏向資料量大的群
                 weight = sum([num_examples[i] for i in idx])
+
             elif action == 1:
-                 # Action 1: loss 下降越多，權重越大
-                cluster_delta_loss = np.mean([X[i, 2] for i in idx])
-                weight = max(-cluster_delta_loss, 0) + 1e-5 
+            # Action 1：異常分數加權，異常越高權重越低
+                cluster_anomaly = np.mean([anomaly_score[i] for i in idx])
+                weight = np.exp(-cluster_anomaly) + 1e-5
+
             elif action == 2:
-                # Action 2: Cosine Similarity 加權
-                cluster_cos = np.mean([X[i, 0] for i in idx])
-                weight = (cluster_cos + 1.0) / 2.0 + 1e-5
+            # Action 2：保守策略，只降低高度異常群，其餘保留
+                cluster_anomaly = np.mean([anomaly_score[i] for i in idx])
+                if cluster_anomaly >= 3.0:
+                    weight = 0.1
+                elif cluster_anomaly >= 1.5:
+                    weight = 0.5
+                else:
+                    weight = 1.0
 
             cluster_weights_ratios.append(weight)
 
