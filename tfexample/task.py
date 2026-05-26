@@ -43,7 +43,14 @@ def load_data(partition_id, num_partitions):
     # Only initialize `FederatedDataset` once
     global fds
     if fds is None:
-        #partitioner = IidPartitioner(num_partitions=num_partitions)
+        import random
+        import os
+        
+        my_seed = int(os.environ.get("SIMULATION_SEED", 42))
+        random.seed(my_seed)
+        
+        malicious_clients = random.sample(range(num_partitions), 1)    # 設定惡意節點
+       
         partitioner = DirichletPartitioner(
             num_partitions=num_partitions,
             partition_by="label",
@@ -71,7 +78,7 @@ def load_data(partition_id, num_partitions):
     y_test = partition["test"][:]["label"]
 
     if partition_id in malicious_clients:
-        y_train = np.where(y_train == 1, 7, y_train)
+        y_train = np.where(y_train == 1, 7, y_train)    # 將圖片為 1 的標籤轉換成 7
 
     partition_cache[partition_id] = (x_train, y_train, x_test, y_test)
 
