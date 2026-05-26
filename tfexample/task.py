@@ -3,6 +3,8 @@
 import os
 
 import keras
+import random
+import numpy as np
 from flwr_datasets import FederatedDataset
 from flwr_datasets.partitioner import DirichletPartitioner
 from flwr_datasets.partitioner import IidPartitioner
@@ -16,7 +18,8 @@ def load_model(learning_rate: float = 0.001):
     # Define a simple CNN for CIFAR-10 and set Adam optimizer
     model = keras.Sequential(
         [
-            keras.Input(shape=(32, 32, 3)),
+            keras.Input(shape=(28, 28, 1)),
+            # keras.Input(shape=(32, 32, 3)),
             layers.Conv2D(32, kernel_size=(3, 3), activation="relu"),
             layers.MaxPooling2D(pool_size=(2, 2)),
             layers.Conv2D(64, kernel_size=(3, 3), activation="relu"),
@@ -26,7 +29,8 @@ def load_model(learning_rate: float = 0.001):
             layers.Dense(10, activation="softmax"),
         ]
     )
-    optimizer = keras.optimizers.Adam(learning_rate)
+    # optimizer = keras.optimizers.Adam(learning_rate)
+    optimizer = keras.optimizers.SGD(learning_rate=learning_rate, momentum=0.9)
     model.compile(
         optimizer=optimizer,
         loss="sparse_categorical_crossentropy",
@@ -35,16 +39,19 @@ def load_model(learning_rate: float = 0.001):
     return model
 
 
-fds = None  # Cache FederatedDataset
+fds = None  
+
+partition_cache = {}  
+malicious_clients = None
 
 
 def load_data(partition_id, num_partitions):
-    # Download and partition dataset
-    # Only initialize `FederatedDataset` once
-    global fds
+    global fds, partition_cache, malicious_clients
+
+    if partition_id in partition_cache:
+        return partition_cache[partition_id]
+
     if fds is None:
-        import random
-        import os
         
         my_seed = int(os.environ.get("SIMULATION_SEED", 42))
         random.seed(my_seed)
@@ -67,8 +74,8 @@ def load_data(partition_id, num_partitions):
     # Divide data on each node: 80% train, 20% test
     partition = partition.train_test_split(test_size=0.2)
 
-    partition["train"].set_format(type="numpy", columns=["img", "label"])
-    partition["test"].set_format(type="numpy", columns=["img", "label"])
+    partition["train"].set_format(type="numpy", columns=["image", "label"])
+    partition["test"].set_format(type="numpy", columns=["image", "label"])
 
     x_train = partition["train"][:]["image"].astype("float32") / 255.0
     x_train = np.expand_dims(x_train, -1)
