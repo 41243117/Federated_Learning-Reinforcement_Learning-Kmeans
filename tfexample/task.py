@@ -52,7 +52,7 @@ def load_data(partition_id, num_partitions):
             self_balancing=False,   # 可保留更強烈的不均勻
         )
         fds = FederatedDataset(
-            dataset="uoft-cs/cifar10",
+            dataset="mnist",
             partitioners={"train": partitioner},
         )
     partition = fds.load_partition(partition_id, "train")
@@ -63,9 +63,16 @@ def load_data(partition_id, num_partitions):
     partition["train"].set_format(type="numpy", columns=["img", "label"])
     partition["test"].set_format(type="numpy", columns=["img", "label"])
 
-    x_train = partition["train"][:]["img"].astype("float32") / 255.0
+    x_train = partition["train"][:]["image"].astype("float32") / 255.0
+    x_train = np.expand_dims(x_train, -1)
     y_train = partition["train"][:]["label"]
-    x_test = partition["test"][:]["img"].astype("float32") / 255.0
+    x_test = partition["test"][:]["image"].astype("float32") / 255.0
+    x_test = np.expand_dims(x_test, -1)
     y_test = partition["test"][:]["label"]
 
-    return x_train, y_train, x_test, y_test
+    if partition_id in malicious_clients:
+        y_train = np.where(y_train == 1, 7, y_train)
+
+    partition_cache[partition_id] = (x_train, y_train, x_test, y_test)
+
+    return partition_cache[partition_id]
