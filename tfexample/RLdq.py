@@ -85,7 +85,7 @@ class DQN:
         # 4. 訓練網路
         self.eval_net.train_on_batch(b_s, q_target)
 
-    # (可選) 幫你加一個儲存/載入模型的功能，因為 FL 訓練很久，萬一中斷可以接續
+    # 加一個儲存/載入模型的功能，因為 FL 訓練很久，萬一中斷可以接續
     def save_model(self, path="dqn_model.keras"):
         self.eval_net.save(path)
         
