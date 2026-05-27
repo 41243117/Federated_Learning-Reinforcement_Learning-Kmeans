@@ -66,7 +66,7 @@ def load_data(partition_id, num_partitions):
             self_balancing=False,   # 可保留更強烈的不均勻
         )
         fds = FederatedDataset(
-            dataset="mnist",
+            dataset="ylecun/mnist",
             partitioners={"train": partitioner},
         )
     partition = fds.load_partition(partition_id, "train")
