@@ -24,7 +24,7 @@ serverapp = "tfexample.server_app:app"
 clientapp = "tfexample.client_app:app"
 
 [tool.flwr.app.config]
-num-server-rounds = 3
+num-server-rounds = 50
 local-epochs = 1
 batch-size = 32
 learning-rate = 0.005
