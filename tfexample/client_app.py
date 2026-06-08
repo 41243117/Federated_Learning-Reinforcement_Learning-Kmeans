@@ -154,14 +154,14 @@ def evaluate(msg: Message, context: Context):
 
 
     # 封裝評估指標回傳
-   metrics = {
+    metrics = {
         "client_id": int(partition_id),
         "eval_loss": eval_loss,
         "eval_acc": eval_acc,
         "num-examples": len(x_test),
         "correct_count": correct_count,
         "total_count": total_count,
-    }
+     }
 
     # 回傳評估訊息
     content = RecordDict({"metrics": MetricRecord(metrics)})
