@@ -190,10 +190,12 @@ class ClusterStrategy(FedAvg):
             2: "Conservative aggregation"
         }
 
+        print("\n" + "=" * 80)
         print(
             f"\n[Round {server_round}] Aggregation Strategy: "
             f"Action {action} - {action_name.get(action, 'Unknown')}"
         )
+        print("=" * 80)
 
         # 記憶這一輪的狀態與動作，給下一輪算 Reward 用
         self.last_state = current_state
@@ -260,10 +262,12 @@ class ClusterStrategy(FedAvg):
         # 權重歸一化 (變成百分比)
         total_weight = sum(cluster_weights_ratios)
         normalized_weights = [w / total_weight for w in cluster_weights_ratios]
+        print("\n" + "=" * 80)
         print(
             f"[Round {server_round}] Cluster aggregation weights: "
             f"{[round(w, 4) for w in normalized_weights]}"
         )
+        print("=" * 80)
 
         # 套用 DQN 決定的權重進行最終 Global Model 聚合
         final_weights = []
