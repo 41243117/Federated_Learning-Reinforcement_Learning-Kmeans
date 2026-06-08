@@ -151,9 +151,10 @@ class ClusterStrategy(FedAvg):
                 f"delta_loss={feat[2]:.4f}, "
                 f"anomaly={anomaly_score[i]:.4f}, "
                 f"level={client_levels[i]}, "
-                f"samples={n}"                )
+                f"samples={n}"                
+            )
 
-        print("=" * 80)
+         print("=" * 80)
             
     # 強化學習
         # 計算這一輪的平均特徵，作為當前狀態
@@ -259,7 +260,7 @@ class ClusterStrategy(FedAvg):
         # 權重歸一化 (變成百分比)
         total_weight = sum(cluster_weights_ratios)
         normalized_weights = [w / total_weight for w in cluster_weights_ratios]
-       print(
+        print(
             f"[Round {server_round}] Cluster aggregation weights: "
             f"{[round(w, 4) for w in normalized_weights]}"
         )
