@@ -57,6 +57,7 @@ def load_data(partition_id, num_partitions):
         random.seed(my_seed)
         
         malicious_clients = random.sample(range(num_partitions), 1)    # 設定惡意節點
+        print(f"Malicious clients: {malicious_clients}")
        
         partitioner = DirichletPartitioner(
             num_partitions=num_partitions,
