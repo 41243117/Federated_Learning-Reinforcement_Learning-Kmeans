@@ -129,32 +129,31 @@ class ClusterStrategy(FedAvg):
             labels = kmeans.fit_predict(X_scaled)
 
 
-        if server_round == 1 or server_round % 5 == 0:
-            print(f"\n Round {server_round} Clustering Result")
-            for i, (feat, label, n) in enumerate(zip(feature_list, labels, num_examples)):
-              client_levels = []
+        client_levels = []
+        for s in anomaly_score:
+            if s < 1.5:
+                client_levels.append("normal")
+            elif s < 3.0:
+                client_levels.append("slightly_abnormal")
+            else:
+                client_levels.append("highly_abnormal")
 
-            for s in anomaly_score:
-                if s < 1.5:
-                    client_levels.append("normal")
-                elif s < 3.0:
-                    client_levels.append("slightly_abnormal")
-                else:
-                    client_levels.append("highly_abnormal")
+        print("\n" + "=" * 80)
+        print(f"[Round {server_round}] Client Feature / Clustering Summary")
+        print("-" * 80)
 
-            print(f"\n Round {server_round} Clustering Result")
+        for i, (feat, label, n) in enumerate(zip(feature_list, labels, num_examples)):
+            print(
+                f"Client {i}: "
+                f"cluster={label + 1}, "
+                f"cos={feat[0]:.4f}, "
+                f"l2={feat[1]:.4f}, "
+                f"delta_loss={feat[2]:.4f}, "
+                f"anomaly={anomaly_score[i]:.4f}, "
+                f"level={client_levels[i]}, "
+                f"samples={n}"                )
 
-            for i, (feat, label, n) in enumerate(zip(feature_list, labels, num_examples)):
-                print(
-                    f"Client {i+1}: "
-                    f"Cluster={label+1}, "
-                    f"cos_sim={feat[0]:.4f}, "
-                    f"l2_norm={feat[1]:.4f}, "
-                    f"delta_loss={feat[2]:.4f}, "
-                    f"anomaly_score={anomaly_score[i]:.4f}, "
-                    f"level={client_levels[i]}, "
-                    f"num_examples={n}"
-                )
+        print("=" * 80)
             
     # 強化學習
         # 計算這一輪的平均特徵，作為當前狀態
@@ -184,7 +183,16 @@ class ClusterStrategy(FedAvg):
         # 讓 DQN 根據目前狀態決定這一輪的 Action
         action = self.dqn_agent.choose_action(current_state)
         self.history_actions.append(action)
-        print(f"\n[RL Agent] Round {server_round} 選擇策略: Action {action}")
+        action_name = {
+            0: "Sample-size weighted aggregation",
+            1: "Anomaly-score weighted aggregation",
+            2: "Conservative aggregation"
+        }
+
+        print(
+            f"\n[Round {server_round}] Aggregation Strategy: "
+            f"Action {action} - {action_name.get(action, 'Unknown')}"
+        )
 
         # 記憶這一輪的狀態與動作，給下一輪算 Reward 用
         self.last_state = current_state
@@ -251,7 +259,10 @@ class ClusterStrategy(FedAvg):
         # 權重歸一化 (變成百分比)
         total_weight = sum(cluster_weights_ratios)
         normalized_weights = [w / total_weight for w in cluster_weights_ratios]
-        print(f"  --> 各群體最終分配權重: {[round(w, 4) for w in normalized_weights]}\n")
+       print(
+            f"[Round {server_round}] Cluster aggregation weights: "
+            f"{[round(w, 4) for w in normalized_weights]}"
+        )
 
         # 套用 DQN 決定的權重進行最終 Global Model 聚合
         final_weights = []
@@ -263,42 +274,52 @@ class ClusterStrategy(FedAvg):
         return ArrayRecord(final_weights), {}
 
 def aggregate_evaluate(self, server_round, replies):
-        print(f"\n Round {server_round} Client Evaluation Result")
+    print("\n" + "=" * 80)
+    print(f"[Round {server_round}] Evaluation Summary")
+    print("-" * 80)
 
-        total_correct = 0
-        total_examples = 0
+    total_correct = 0
+    total_examples = 0
+    weighted_loss_sum = 0.0
 
-        for i, reply in enumerate(replies):
-            metrics_record = reply.content.get("metrics", None)
-            metrics = _metric_record_to_dict(metrics_record)
+    for i, reply in enumerate(replies):
+        metrics_record = reply.content.get("metrics", None)
+        metrics = _metric_record_to_dict(metrics_record)
 
-            client_id = int(metrics.get("client_id", i))
-            correct_count = int(metrics.get("correct_count", 0))
-            total_count = int(metrics.get("total_count", metrics.get("num-examples", 0)))
-            eval_acc = float(metrics.get("eval_acc", 0.0))
-            eval_loss = float(metrics.get("eval_loss", 0.0))
+        client_id = int(metrics.get("client_id", i))
+        correct_count = int(metrics.get("correct_count", 0))
+        total_count = int(metrics.get("total_count", metrics.get("num-examples", 0)))
+        eval_acc = float(metrics.get("eval_acc", 0.0))
+        eval_loss = float(metrics.get("eval_loss", 0.0))
 
-            total_correct += correct_count
-            total_examples += total_count
+        total_correct += correct_count
+        total_examples += total_count
+        weighted_loss_sum += eval_loss * total_count
 
-            print(
-                f"Client {client_id}: "
-                f"total={total_count}, "
-                f"correct={correct_count}, "
-                f"acc={eval_acc:.4f}, "
-                f"loss={eval_loss:.4f}"
-            )
+        print(
+            f"Client {client_id}: "
+            f"test={total_count}, "
+            f"correct={correct_count}, "
+            f"acc={eval_acc:.4f}, "
+            f"loss={eval_loss:.4f}"
+        )
 
-        if total_examples > 0:
-            global_acc = total_correct / total_examples
-            print(
-                f"Global Evaluation: "
-                f"total={total_examples}, "
-                f"correct={total_correct}, "
-                f"acc={global_acc:.4f}\n"
-            )
+    if total_examples > 0:
+        global_acc = total_correct / total_examples
+        global_loss = weighted_loss_sum / total_examples
 
-        return super().aggregate_evaluate(server_round, replies)
+        print("-" * 80)
+        print(
+            f"Global Evaluation: "
+            f"test={total_examples}, "
+            f"correct={total_correct}, "
+            f"acc={global_acc:.4f}, "
+            f"loss={global_loss:.4f}"
+        )
+
+    print("=" * 80)
+
+    return super().aggregate_evaluate(server_round, replies)
 
 @app.main()
 def main(grid: Grid, context: Context) -> None:
