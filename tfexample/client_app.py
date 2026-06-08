@@ -55,8 +55,11 @@ def train(msg: Message, context: Context):
 
     # 顯示每個 client 中各標籤的資料量與比率
     counts, ratios = label_distribution(y_train, num_classes=10)
-    print(f"[Client {partition_id}] label_counts={counts.tolist()}")
-    print(f"[Client {partition_id}] label_ratios={[float(r) for r in ratios.tolist()]}")
+    print(
+        f"[Client {partition_id}] "
+        f"label_counts={counts.tolist()}, "
+        f"num_train={len(y_train)}"
+    )
     
     # 建立模型
     lr = context.run_config["learning-rate"]
@@ -149,15 +152,10 @@ def evaluate(msg: Message, context: Context):
     correct_count = int(np.sum(y_pred == y_test))
     total_count = int(len(y_test))
 
-    print(
-        f"[Client {partition_id}] "
-        f"total_test={total_count}, "
-        f"correct={correct_count}, "
-        f"accuracy={correct_count / total_count:.4f}"
-    )
 
     # 封裝評估指標回傳
-    metrics = {
+   metrics = {
+        "client_id": int(partition_id),
         "eval_loss": eval_loss,
         "eval_acc": eval_acc,
         "num-examples": len(x_test),
