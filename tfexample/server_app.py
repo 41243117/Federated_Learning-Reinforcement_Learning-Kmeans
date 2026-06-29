@@ -154,7 +154,7 @@ class ClusterStrategy(FedAvg):
                 f"samples={n}"                
             )
 
-         print("=" * 80)
+        print("=" * 80)
             
     # 強化學習
         # 計算這一輪的平均特徵，作為當前狀態
